@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+#include <endian.h>
 #include <memory.h>
 
 static void BM_bswap32(benchmark::State& state) {
@@ -58,6 +59,7 @@ static void BM_load_be48(benchmark::State& state) {
     benchmark::DoNotOptimize(sink);
 }
 
+
 static void BM_load_be48_v2(benchmark::State& state) {
     std::array<std::byte, 6> buf{
         std::byte{0x01}, std::byte{0x23}, std::byte{0x45},
@@ -74,8 +76,25 @@ static void BM_load_be48_v2(benchmark::State& state) {
     benchmark::DoNotOptimize(sink);
 }
 
+static void BM_load_be48_v3(benchmark::State& state) {
+    std::array<std::byte, 8> buf{
+        std::byte{0x01}, std::byte{0x23}, std::byte{0x45},
+        std::byte{0x67}, std::byte{0x89}, std::byte{0xAB}, std::byte{0x89}, std::byte{0xAB}
+    };
+
+    const std::byte* p = buf.data();
+    uint64_t sink = 0;
+
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(sink = be64toh(uint64_t(*p)) >> 16);
+    }
+
+    benchmark::DoNotOptimize(sink);
+}
+
 BENCHMARK(BM_load_be48);
 BENCHMARK(BM_load_be48_v2);
+BENCHMARK(BM_load_be48_v3);
 
 BENCHMARK(BM_bswap32);
 BENCHMARK(BM_bswap64);

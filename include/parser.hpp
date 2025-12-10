@@ -8,6 +8,7 @@
 
 namespace ITCH {
 
+
 enum class MessageType {
     SYSTEM_EVENT                = 'S',
     STOCK_DIRECTORY             = 'R',
@@ -38,6 +39,29 @@ enum class MessageType {
     DIRECT_LISTING_CAPITAL_RAISE = 'O',
 };
 
+#define ITCH_MESSAGE_LIST(X) \
+    X(SYSTEM_EVENT,                 SystemEvent) \
+    X(STOCK_DIRECTORY,              StockDirectory) \
+    X(STOCK_TRADING_ACTION,         TradingAction) \
+    X(REG_SHO,                      RegSho) \
+    X(MARKET_PARTICIPANT_POSITION,  MarketParticipantPos) \
+    X(MWCB_DECLINE_LEVEL_MESSAGE,   MwcbDeclineLevel) \
+    X(MWCB_STATUS_MESSAGE,          MwcbStatus) \
+    X(IPO_QUOTING_PERIOD_UPD,       IpoQuotationPeriodUpd) \
+    X(LULD_AUCTION_COLLAR,          LuldAuctionCollar) \
+    X(OPERATIONAL_HALT,             OperationalHalt) \
+    X(ADD_ORDER_NO_MPID,            AddOrderNoMpid) \
+    X(ADD_ORDER_MPID,               AddOrderMpid) \
+    X(ORDER_EXECUTED,               OrderExecuted) \
+    X(ORDER_EXECUTED_PRICE,         OrderExecutedPrice) \
+    X(ORDER_CANCEL,                 OrderCancel) \
+    X(ORDER_DELETE,                 OrderDelete) \
+    X(ORDER_REPLACE,                OrderReplace) \
+    X(NON_CROSS_TRADE_MSG,          TradeMessageNonCross) \
+    X(CROSS_TRADE_MSG,              TradeMessageCross) \
+    X(BROKEN_TRADE_MSG,             BrokenTrade) \
+    X(NOII_MSG,                     Noii) \
+    X(DIRECT_LISTING_CAPITAL_RAISE, DirectListingCapitalRaise)
 
 struct SystemEvent {
     uint16_t stock_locate;
@@ -84,7 +108,7 @@ struct RegSho {
     char     reg_sho_action;
 };
 
-struct MarketParticipantPosition {
+struct MarketParticipantPos {
     uint16_t stock_locate;
     uint16_t tracking_number;
     uint64_t timestamp;
@@ -111,7 +135,7 @@ struct MwcbStatus {
     char     breached_level;
 };
 
-struct IPOQuotingPeriodUpd {
+struct IpoQuotationPeriodUpd {
     uint16_t stock_locate;
     uint16_t tracking_number;
     uint64_t timestamp;
@@ -279,10 +303,10 @@ struct Message {
         StockDirectory stock_directory;
         TradingAction trading_action;
         RegSho reg_sho;
-        MarketParticipantPosition market_participant_pos;
+        MarketParticipantPos market_participant_pos;
         MwcbDeclineLevel mwcb_decline_level;
         MwcbStatus mwcb_status;
-        IPOQuotingPeriodUpd ipo_quotation_period_upd;
+        IpoQuotationPeriodUpd ipo_quotation_period_upd;
         LuldAuctionCollar luld_auction_collar;
         OperationalHalt operational_halt;
         AddOrderNoMpid add_order_no_mpid;
@@ -338,7 +362,7 @@ inline uint16_t load_be16(const std::byte* p) {
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
 }
 
-inline SystemEvent parse_system_event(std::byte const * src) {
+inline SystemEvent parseSystemEvent(std::byte const * src) {
     SystemEvent sysEvent;
     sysEvent.stock_locate = load_be16(src);
     src += 2;
@@ -351,7 +375,7 @@ inline SystemEvent parse_system_event(std::byte const * src) {
     return sysEvent;
 }
 
-inline StockDirectory parse_stock_directory(std::byte const * src) {
+inline StockDirectory parseStockDirectory(std::byte const * src) {
     StockDirectory stockDir;
     stockDir.stock_locate = load_be16(src);
     src += 2;
@@ -391,7 +415,7 @@ inline StockDirectory parse_stock_directory(std::byte const * src) {
     return stockDir;
 }
 
-inline TradingAction parse_trading_action(std::byte const * src) {
+inline TradingAction parseTradingAction(std::byte const * src) {
     TradingAction tradingAction;
 
     tradingAction.stock_locate = load_be16(src);
@@ -412,7 +436,7 @@ inline TradingAction parse_trading_action(std::byte const * src) {
     return tradingAction;
 }
 
-inline RegSho parse_reg_sho(std::byte const * src) {
+inline RegSho parseRegSho(std::byte const * src) {
     RegSho regSho;
 
     regSho.locate_code = load_be16(src);
@@ -429,8 +453,8 @@ inline RegSho parse_reg_sho(std::byte const * src) {
     return regSho;
 }
 
-inline MarketParticipantPosition parse_market_participant_pos(std::byte const * src) {
-    MarketParticipantPosition marketPartPos;
+inline MarketParticipantPos parseMarketParticipantPos(std::byte const * src) {
+    MarketParticipantPos marketPartPos;
 
     marketPartPos.stock_locate = load_be16(src);
     src += 2;
@@ -452,7 +476,7 @@ inline MarketParticipantPosition parse_market_participant_pos(std::byte const * 
     return marketPartPos;
 }
 
-inline MwcbDeclineLevel parse_mwcb_decline_level(std::byte const * src) {
+inline MwcbDeclineLevel parseMwcbDeclineLevel(std::byte const * src) {
     MwcbDeclineLevel mwcbDeclineLevel;
 
     mwcbDeclineLevel.stock_locate = load_be16(src);
@@ -472,7 +496,7 @@ inline MwcbDeclineLevel parse_mwcb_decline_level(std::byte const * src) {
     return mwcbDeclineLevel;
 }
 
-inline MwcbStatus parse_mwcb_status_message(std::byte const * src) {
+inline MwcbStatus parseMwcbStatus(std::byte const * src) {
     MwcbStatus mwcbStatus;
 
     mwcbStatus.stock_locate = load_be16(src);
@@ -487,8 +511,8 @@ inline MwcbStatus parse_mwcb_status_message(std::byte const * src) {
     return mwcbStatus;
 }
 
-inline IPOQuotingPeriodUpd parse_ipo_quotation_period_upd(std::byte const * src) {
-    IPOQuotingPeriodUpd ipoQuotingPerUpd;
+inline IpoQuotationPeriodUpd parseIpoQuotationPeriodUpd(std::byte const * src) {
+    IpoQuotationPeriodUpd ipoQuotingPerUpd;
 
     ipoQuotingPerUpd.stock_locate = load_be16(src);
     src += 2;
@@ -508,7 +532,7 @@ inline IPOQuotingPeriodUpd parse_ipo_quotation_period_upd(std::byte const * src)
     return ipoQuotingPerUpd;
 };
 
-inline LuldAuctionCollar parse_luld_auction_collar(std::byte const * src) {
+inline LuldAuctionCollar parseLuldAuctionCollar(std::byte const * src) {
     LuldAuctionCollar luldActionCollar;
 
     luldActionCollar.stock_locate = load_be16(src);
@@ -531,7 +555,7 @@ inline LuldAuctionCollar parse_luld_auction_collar(std::byte const * src) {
     return luldActionCollar;
 }
 
-inline OperationalHalt parse_operational_halt(std::byte const * src) {
+inline OperationalHalt parseOperationalHalt(std::byte const * src) {
     OperationalHalt operationalHalt;
 
     operationalHalt.stock_locate = load_be16(src);
@@ -550,7 +574,7 @@ inline OperationalHalt parse_operational_halt(std::byte const * src) {
     return operationalHalt;
 }
 
-inline AddOrderNoMpid parse_add_order_no_mpid(std::byte const * src) {
+inline AddOrderNoMpid parseAddOrderNoMpid(std::byte const * src) {
     AddOrderNoMpid addOrderNoMpid;
 
     addOrderNoMpid.stock_locate = load_be16(src);
@@ -573,7 +597,7 @@ inline AddOrderNoMpid parse_add_order_no_mpid(std::byte const * src) {
     return addOrderNoMpid;
 }
 
-inline AddOrderMpid parse_add_order_mpid(std::byte const * src) {
+inline AddOrderMpid parseAddOrderMpid(std::byte const * src) {
     AddOrderMpid addOrderMpid;
 
     addOrderMpid.stock_locate = load_be16(src);
@@ -598,7 +622,7 @@ inline AddOrderMpid parse_add_order_mpid(std::byte const * src) {
     return addOrderMpid;
 }
 
-inline OrderExecuted parse_order_executed(std::byte const * src) {
+inline OrderExecuted parseOrderExecuted(std::byte const * src) {
     OrderExecuted orderExecuted;
 
     orderExecuted.stock_locate = load_be16(src);
@@ -617,7 +641,7 @@ inline OrderExecuted parse_order_executed(std::byte const * src) {
     return orderExecuted;
 }
 
-inline OrderExecutedPrice parse_order_executed_price(std::byte const * src) {
+inline OrderExecutedPrice parseOrderExecutedPrice(std::byte const * src) {
     OrderExecutedPrice orderExecutedPrice;
 
     orderExecutedPrice.stock_locate = load_be16(src);
@@ -640,7 +664,7 @@ inline OrderExecutedPrice parse_order_executed_price(std::byte const * src) {
     return orderExecutedPrice;
 }
 
-inline OrderCancel parse_order_cancel(std::byte const * src) {
+inline OrderCancel parseOrderCancel(std::byte const * src) {
     OrderCancel orderCancel;
 
     orderCancel.stock_locate = load_be16(src);
@@ -657,7 +681,7 @@ inline OrderCancel parse_order_cancel(std::byte const * src) {
     return orderCancel;
 }
 
-inline OrderDelete parse_order_delete(std::byte const * src) {
+inline OrderDelete parseOrderDelete(std::byte const * src) {
     OrderDelete orderDelete;
 
     orderDelete.stock_locate = load_be16(src);
@@ -672,7 +696,7 @@ inline OrderDelete parse_order_delete(std::byte const * src) {
     return orderDelete;
 }
 
-inline OrderReplace parse_order_replace(std::byte const * src) {
+inline OrderReplace parseOrderReplace(std::byte const * src) {
     OrderReplace orderReplace;
 
     orderReplace.stock_locate = load_be16(src);
@@ -693,7 +717,7 @@ inline OrderReplace parse_order_replace(std::byte const * src) {
     return orderReplace;
 }
 
-inline TradeMessageNonCross parse_trade_message_non_cross(std::byte const * src) {
+inline TradeMessageNonCross parseTradeMessageNonCross(std::byte const * src) {
     TradeMessageNonCross tradeMessageNonCross;
 
     tradeMessageNonCross.stock_locate = load_be16(src);
@@ -718,7 +742,7 @@ inline TradeMessageNonCross parse_trade_message_non_cross(std::byte const * src)
     return tradeMessageNonCross;
 }
 
-inline TradeMessageCross parse_trade_message_cross(std::byte const * src) {
+inline TradeMessageCross parseTradeMessageCross(std::byte const * src) {
     TradeMessageCross tradeMessageCross;
 
     tradeMessageCross.stock_locate = load_be16(src);
@@ -741,7 +765,7 @@ inline TradeMessageCross parse_trade_message_cross(std::byte const * src) {
     return tradeMessageCross;
 }
 
-inline BrokenTrade parse_broken_trade(std::byte const * src) {
+inline BrokenTrade parseBrokenTrade(std::byte const * src) {
     BrokenTrade brokenTrade;
 
     brokenTrade.stock_locate = load_be16(src);
@@ -756,7 +780,7 @@ inline BrokenTrade parse_broken_trade(std::byte const * src) {
     return brokenTrade;
 }
 
-inline Noii parse_noii(std::byte const * src) {
+inline Noii parseNoii(std::byte const * src) {
     Noii noii;
 
     noii.stock_locate = load_be16(src);
@@ -787,7 +811,7 @@ inline Noii parse_noii(std::byte const * src) {
     return noii;
 }
 
-inline DirectListingCapitalRaise parse_direct_listing_capital_raise(std::byte const * src) {
+inline DirectListingCapitalRaise parseDirectListingCapitalRaise(std::byte const * src) {
     DirectListingCapitalRaise directListingCapitalRaise;
 
     directListingCapitalRaise.stock_locate = load_be16(src);
@@ -828,101 +852,25 @@ inline Message ItchParser::parseMsg(std::byte const * src) {
     msg.type = type;
     msg.size = size;
 
+
     switch (type) {
-        case MessageType::SYSTEM_EVENT:
-            msg.system_event = parse_system_event(src);
-            break;
+    #define X(NAME, SUFFIX) \
+        case MessageType::NAME: { \
+            SUFFIX m = parse##SUFFIX(src); \
+            break; \
+        }
 
-        case MessageType::STOCK_DIRECTORY:
-            msg.stock_directory = parse_stock_directory(src);
-            break;
-
-        case MessageType::STOCK_TRADING_ACTION:
-            msg.trading_action = parse_trading_action(src);
-            break;
-
-        case MessageType::REG_SHO:
-            msg.reg_sho = parse_reg_sho(src);
-            break;
-
-        case MessageType::MARKET_PARTICIPANT_POSITION:
-            msg.market_participant_pos = parse_market_participant_pos(src);
-            break;
-
-        case MessageType::MWCB_DECLINE_LEVEL_MESSAGE:
-            msg.mwcb_decline_level = parse_mwcb_decline_level(src);
-            break;
-
-        case MessageType::MWCB_STATUS_MESSAGE:
-            msg.mwcb_status = parse_mwcb_status_message(src);
-            break;
-
-        case MessageType::IPO_QUOTING_PERIOD_UPD:
-            msg.ipo_quotation_period_upd = parse_ipo_quotation_period_upd(src);
-            break;
-
-        case MessageType::LULD_AUCTION_COLLAR:
-            msg.luld_auction_collar = parse_luld_auction_collar(src);
-            break;
-
-        case MessageType::OPERATIONAL_HALT:
-            msg.operational_halt = parse_operational_halt(src);
-            break;
-
-        case MessageType::ADD_ORDER_NO_MPID:
-            msg.add_order_no_mpid = parse_add_order_no_mpid(src);
-            break;
-
-        case MessageType::ADD_ORDER_MPID:
-            msg.add_order_mpid = parse_add_order_mpid(src);
-            break;
-
-        case MessageType::ORDER_EXECUTED:
-            msg.order_executed = parse_order_executed(src);
-            break;
-
-        case MessageType::ORDER_EXECUTED_PRICE:
-            msg.order_executed_price = parse_order_executed_price(src);
-            break;
-
-        case MessageType::ORDER_CANCEL:
-            msg.order_cancel = parse_order_cancel(src);
-            break;
-
-        case MessageType::ORDER_DELETE:
-            msg.order_delete = parse_order_delete(src);
-            break;
-
-        case MessageType::ORDER_REPLACE:
-            msg.order_replace = parse_order_replace(src);
-            break;
-
-        case MessageType::NON_CROSS_TRADE_MSG:
-            msg.trade_msg_non_cross = parse_trade_message_non_cross(src);
-            break;
-
-        case MessageType::CROSS_TRADE_MSG:
-            msg.trade_msg_cross = parse_trade_message_cross(src);
-            break;
-
-        case MessageType::BROKEN_TRADE_MSG:
-            msg.broken_trade = parse_broken_trade(src);
-            break;
-
-        case MessageType::NOII_MSG:
-            msg.noii = parse_noii(src);
-            break;
-
-        case MessageType::DIRECT_LISTING_CAPITAL_RAISE:
-            msg.direct_listing_capital_raise = parse_direct_listing_capital_raise(src);
-            break;
+        ITCH_MESSAGE_LIST(X)
 
         default:
             throw std::runtime_error("Unknown message type: " + std::to_string(raw_type));
+    #undef X
     }
 
     return msg;
 }
+
+//template<typename SpecificHandler>
 
 template <typename Handler>
 void ItchParser::parse(std::byte const *  src, size_t len, Handler& handler) {
