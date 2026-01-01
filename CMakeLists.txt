@@ -16,6 +16,7 @@ target_include_directories(itch_parser INTERFACE include)
 add_executable(parser_bench
     benchmark/main.cpp
     benchmark/bm_parser.cpp
+    benchmark/bm_parser_v2.cpp
     benchmark/bm_ops.cpp
 )
 target_compile_options(parser_bench PRIVATE -g -fno-omit-frame-pointer)

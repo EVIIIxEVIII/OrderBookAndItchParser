@@ -1,83 +1,116 @@
-#include <iostream>
-#include <fstream>
-#include <unordered_map>
-#include <vector>
-#include <cstdint>
-#include <memory.h>
+#include <array>
 #include <chrono>
-#include "parser.hpp"
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <vector>
 
-inline uint64_t load_be48_v2(const std::byte* p) {
-    uint64_t v;
+#include "parser_v1.hpp"
+#include "parser_v2.hpp"
 
-    memcpy(&v, p, 6);
-    v = __builtin_bswap64(v);
-    return v >> 16;
-}
+static volatile uint64_t sink = 0;
 
-
-class Handler {
-public:
-    void handle(ITCH::Message msg) {
+template<typename MsgType, size_t N>
+struct CounterHandler {
+    void handle(const MsgType& msg) {
         messages_num++;
-        perCategory[msg.type]++;
+        counts[static_cast<unsigned char>(msg.type)]++;
     }
 
-    std::unordered_map<ITCH::MessageType, int> perCategory;
-    long long messages_num = 0;
+    void reset() {
+        messages_num = 0;
+        counts.fill(0);
+    }
+
+    std::array<uint64_t, N> counts{};
+    uint64_t messages_num = 0;
 };
 
-int main() {
-    std::ifstream file("../data/01302019.NASDAQ_ITCH50",
-                       std::ios::binary | std::ios::in);
+static void consume_counts(const std::array<uint64_t, 256>& counts) {
+    uint64_t acc = 0;
+    for (size_t i = 0; i < counts.size(); ++i) {
+        acc ^= (counts[i] + i);
+    }
+    sink ^= acc;
+}
 
+template<typename Parser, typename Handler>
+static void run_one(
+    const char* name,
+    Parser& parser,
+    Handler& handler,
+    const std::byte* src,
+    size_t len
+) {
+    using clock = std::chrono::high_resolution_clock;
+
+    handler.reset();
+
+    auto start = clock::now();
+    parser.parse(src, len, handler);
+    auto end = clock::now();
+
+    double seconds =
+        std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+
+    uint64_t msgs = handler.messages_num;
+    double throughput = msgs / seconds;
+    double avg_ns = (seconds * 1e9) / double(msgs);
+
+    consume_counts(handler.counts);
+
+    std::cout << "=== " << name << " ===\n";
+    std::cout << "Messages:        " << msgs << "\n";
+    std::cout << "Seconds:         " << seconds << "\n";
+    std::cout << "Throughput:      " << throughput << " msg/s\n";
+    std::cout << "Average latency: " << avg_ns << " ns/msg\n\n";
+}
+
+template<typename Handler>
+static void dump_counts(const Handler& handler) {
+    for (size_t i = 0; i < handler.counts.size(); ++i) {
+        if (handler.counts[i] == 0) continue;
+        std::cout << char(i) << ' ' << handler.counts[i] << '\n';
+    }
+}
+
+int main() {
+    std::ifstream file("../data/01302019.NASDAQ_ITCH50", std::ios::binary);
     if (!file) {
         std::cerr << "Failed to open file\n";
         return 1;
     }
 
     std::vector<std::byte> src_buf;
-    try {
-        src_buf.resize(1ull << 30);
-    } catch (const std::bad_alloc&) {
-        std::cerr << "Allocation failed\n";
+    src_buf.resize(1ull << 30);
+
+    file.read(reinterpret_cast<char*>(src_buf.data()), src_buf.size());
+    size_t bytes_read = size_t(file.gcount());
+    if (bytes_read < 3) {
+        std::cerr << "File read too small\n";
         return 1;
     }
 
-    file.read(reinterpret_cast<char*>(src_buf.data()), src_buf.size());
-    std::size_t bytes_read = file.gcount();
-
     const std::byte* src = src_buf.data();
+    size_t len = bytes_read;
 
-    Handler handler{};
-    ITCH::ItchParser parser;
-    size_t len = 1ull * 1024 * 1024 * 1024;
+    ITCHv1::ItchParser parser_v1;
+    ITCHv2::ItchParser parser_v2;
 
-    using clock = std::chrono::high_resolution_clock;
+    CounterHandler<ITCHv1::Message, 256> h1;
+    CounterHandler<ITCHv2::Message, 256> h2;
 
-    auto start = clock::now();
+    run_one("WARMUP v2", parser_v2, h2, src, len);
 
-    parser.parse(src, len, handler);
+    run_one("ITCH v2", parser_v2, h2, src, len);
+    run_one("ITCH v1", parser_v1, h1, src, len);
 
-    auto end = clock::now();
+    std::cout << "=== Per-type counts (v1) ===\n";
+    dump_counts(h1);
+    std::cout << "\n=== Per-type counts (v2) ===\n";
+    dump_counts(h2);
 
-    uint64_t msgs = handler.messages_num;
-
-    double seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
-
-    double throughput_msgs_per_sec = msgs / seconds;
-    double avg_ns_per_msg = (seconds * 1e9) / msgs;
-
-    for (auto& [key, value] : handler.perCategory) {
-        std::cout << char(key) << ' ' << value << '\n';
-    }
-
-    std::cout << "Messages:        " << msgs << "\n";
-    std::cout << "Seconds:         " << seconds << "\n";
-    std::cout << "Throughput:      " << throughput_msgs_per_sec << " msg/s\n";
-    std::cout << "Average latency: " << avg_ns_per_msg << " ns/msg\n";
-
+    std::cerr << "sink=" << sink << "\n";
     return 0;
-
 }
+

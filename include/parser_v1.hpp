@@ -6,7 +6,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace ITCH {
+namespace ITCHv1 {
 
 enum class MessageType {
     SYSTEM_EVENT                = 'S',
@@ -39,28 +39,28 @@ enum class MessageType {
 };
 
 #define ITCH_MESSAGE_LIST(X) \
-    X(SYSTEM_EVENT,                 SystemEvent) \
-    X(STOCK_DIRECTORY,              StockDirectory) \
-    X(STOCK_TRADING_ACTION,         TradingAction) \
-    X(REG_SHO,                      RegSho) \
-    X(MARKET_PARTICIPANT_POSITION,  MarketParticipantPos) \
-    X(MWCB_DECLINE_LEVEL_MESSAGE,   MwcbDeclineLevel) \
-    X(MWCB_STATUS_MESSAGE,          MwcbStatus) \
-    X(IPO_QUOTING_PERIOD_UPD,       IpoQuotationPeriodUpd) \
-    X(LULD_AUCTION_COLLAR,          LuldAuctionCollar) \
-    X(OPERATIONAL_HALT,             OperationalHalt) \
-    X(ADD_ORDER_NO_MPID,            AddOrderNoMpid) \
-    X(ADD_ORDER_MPID,               AddOrderMpid) \
-    X(ORDER_EXECUTED,               OrderExecuted) \
-    X(ORDER_EXECUTED_PRICE,         OrderExecutedPrice) \
-    X(ORDER_CANCEL,                 OrderCancel) \
-    X(ORDER_DELETE,                 OrderDelete) \
-    X(ORDER_REPLACE,                OrderReplace) \
-    X(NON_CROSS_TRADE_MSG,          TradeMessageNonCross) \
-    X(CROSS_TRADE_MSG,              TradeMessageCross) \
-    X(BROKEN_TRADE_MSG,             BrokenTrade) \
-    X(NOII_MSG,                     Noii) \
-    X(DIRECT_LISTING_CAPITAL_RAISE, DirectListingCapitalRaise)
+    X(SYSTEM_EVENT,                 SystemEvent,                 system_event) \
+    X(STOCK_DIRECTORY,              StockDirectory,              stock_directory) \
+    X(STOCK_TRADING_ACTION,         TradingAction,               trading_action) \
+    X(REG_SHO,                      RegSho,                      reg_sho) \
+    X(MARKET_PARTICIPANT_POSITION,  MarketParticipantPos,        market_participant_pos) \
+    X(MWCB_DECLINE_LEVEL_MESSAGE,   MwcbDeclineLevel,            mwcb_decline_level) \
+    X(MWCB_STATUS_MESSAGE,          MwcbStatus,                  mwcb_status) \
+    X(IPO_QUOTING_PERIOD_UPD,       IpoQuotationPeriodUpd,       ipo_quotation_period_upd) \
+    X(LULD_AUCTION_COLLAR,          LuldAuctionCollar,           luld_auction_collar) \
+    X(OPERATIONAL_HALT,             OperationalHalt,             operational_halt) \
+    X(ADD_ORDER_NO_MPID,            AddOrderNoMpid,              add_order_no_mpid) \
+    X(ADD_ORDER_MPID,               AddOrderMpid,                add_order_mpid) \
+    X(ORDER_EXECUTED,               OrderExecuted,               order_executed) \
+    X(ORDER_EXECUTED_PRICE,         OrderExecutedPrice,          order_executed_price) \
+    X(ORDER_CANCEL,                 OrderCancel,                 order_cancel) \
+    X(ORDER_DELETE,                 OrderDelete,                 order_delete) \
+    X(ORDER_REPLACE,                OrderReplace,                order_replace) \
+    X(NON_CROSS_TRADE_MSG,          TradeMessageNonCross,        trade_msg_non_cross) \
+    X(CROSS_TRADE_MSG,              TradeMessageCross,           trade_msg_cross) \
+    X(BROKEN_TRADE_MSG,             BrokenTrade,                 broken_trade) \
+    X(NOII_MSG,                     Noii,                        noii) \
+    X(DIRECT_LISTING_CAPITAL_RAISE, DirectListingCapitalRaise,   direct_listing_capital_raise)
 
 struct SystemEvent {
     uint16_t stock_locate;
@@ -843,6 +843,7 @@ inline DirectListingCapitalRaise parseDirectListingCapitalRaise(std::byte const 
     return directListingCapitalRaise;
 }
 
+static volatile uint64_t sink;
 inline Message ItchParser::parseMsg(std::byte const * src) {
     uint16_t size = load_be16(src);
     src += 2;
@@ -856,12 +857,13 @@ inline Message ItchParser::parseMsg(std::byte const * src) {
     msg.size = size;
 
     switch (type) {
-    #define X(NAME, SUFFIX) \
+    #define X(NAME, TYPE, FIELD) \
         case MessageType::NAME: { \
-            SUFFIX m = parse##SUFFIX(src); \
+            TYPE m = parse##TYPE(src); \
+            sink ^= m.timestamp; \
+            msg.FIELD = m; \
             break; \
         }
-
         ITCH_MESSAGE_LIST(X)
 
         default:
@@ -891,10 +893,10 @@ void ItchParser::parseSpecific(std::byte const * src, size_t len, SpecificHandle
         msg.size = size;
 
         switch (type) {
-        #define X(NAME, SUFFIX) \
+        #define X(NAME, TYPE, FIELD) \
             case MessageType::NAME: { \
-                SUFFIX m = parse##SUFFIX(src); \
-                handler.handler##SUFFIX(m); \
+                auto m = parse##TYPE(src); \
+                handler.handle##TYPE(m); \
                 break; \
             }
 

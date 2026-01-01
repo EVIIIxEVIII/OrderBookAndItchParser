@@ -4,11 +4,11 @@
 #include <cstddef>
 #include <iostream>
 
-#include "parser_v1.hpp"
+#include "parser_v2.hpp"
 
 class Handler {
 public:
-    void handle(ITCHv1::Message msg) {
+    void handle(ITCHv2::Message msg) {
         messages_num++;
     }
 
@@ -20,7 +20,7 @@ static const std::vector<std::byte> first_chunk(size_t size) {
         std::ifstream file("../data/01302019.NASDAQ_ITCH50",
                            std::ios::binary);
         if (!file) {
-            throw std::runtime_error("Failed to open ITCHv1 file");
+            throw std::runtime_error("Failed to open ITCH file");
         }
 
         std::vector<std::byte> tmp(size);
@@ -37,29 +37,28 @@ static const std::vector<std::byte> first_chunk(size_t size) {
 }
 
 
-static void BM_ParseMsg(benchmark::State& state) {
+static void BM_ParseMsg_v2(benchmark::State& state) {
     static const std::vector<std::byte> buf = first_chunk(4096);
-    ITCHv1::ItchParser parser;
+    ITCHv2::ItchParser parser;
 
     const std::byte* vsrc = buf.data();
-    ITCHv1::MessageType last_type = ITCHv1::MessageType::SYSTEM_EVENT;
+    ITCHv2::MessageType last_type = ITCHv2::MessageType::SYSTEM_EVENT;
 
     for (auto _ : state) {
         auto msg =  parser.parseMsg(vsrc);
         benchmark::DoNotOptimize(msg);
-        last_type = msg.type;
     }
 
     state.SetItemsProcessed(state.iterations());
 }
 
-static void BM_Parse(benchmark::State& state) {
+static void BM_Parse_v2(benchmark::State& state) {
     const auto size = state.range(0);
     std::vector<std::byte> src_buf = first_chunk(size);
 
     const std::byte* src = src_buf.data();
 
-    ITCHv1::ItchParser parser;
+    ITCHv2::ItchParser parser;
     for (auto _ : state) {
         Handler handler{};
         parser.parse(src, size, handler);
@@ -70,11 +69,11 @@ static void BM_Parse(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_Parse)
+BENCHMARK(BM_Parse_v2)
     ->Args({4096})
     ->Args({8192})
     ->Args({16 * 1024})
     ->Args({32 * 1024})
     ->Args({64 * 1024})
     ->Args({128 * 1024});
-BENCHMARK(BM_ParseMsg);
+BENCHMARK(BM_ParseMsg_v2);
