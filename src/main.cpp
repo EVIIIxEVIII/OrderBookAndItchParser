@@ -100,11 +100,11 @@ int main() {
     CounterHandler<ITCHv1::Message, 256> h1;
     CounterHandler<ITCHv2::Message, 256> h2;
 
-    run_one("WARMUP v2", parser_v2, h2, src, len);
+    //run_one("WARMUP v2", parser_v2, h2, src, len);
+    run_one("ITCH v1", parser_v1, h1, src, len);
     run_one("ITCH v2", parser_v2, h2, src, len);
 
-    run_one("WARMUP v1", parser_v1, h1, src, len);
-    run_one("ITCH v1", parser_v1, h1, src, len);
+    //run_one("WARMUP v1", parser_v1, h1, src, len);
 
     std::cout << "=== Per-type counts (v1) ===\n";
     dump_counts(h1);

@@ -860,7 +860,8 @@ inline Message ItchParser::parseMsg(std::byte const * src) {
         case MessageType::NAME: { \
             TYPE m = parse##TYPE(src); \
             msg.FIELD = m; \
-            break; \
+            asm volatile("" : : "r,m"(msg.FIELD)); \
+            return msg; \
         }
         ITCH_MESSAGE_LIST(X)
 

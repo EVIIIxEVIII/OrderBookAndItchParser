@@ -801,5 +801,4 @@ void ItchParser::parse(std::byte const *  src, size_t len, Handler& handler) {
         src += msg.size + 2;
     }
 }
-
 }
