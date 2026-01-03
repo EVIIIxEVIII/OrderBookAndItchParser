@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <ittnotify.h>
 #include <vector>
 
 #include <sys/types.h>
@@ -97,7 +98,7 @@ pid_t run_perf() {
         execlp(
             "perf",
             "perf",
-            "record",
+            "stat",
             "-p", pidbuf,
             nullptr
         );
@@ -152,6 +153,7 @@ void export_latency_distribution_csv(
 }
 
 int main() {
+    __itt_pause();
     auto res = init_benchmark();
     auto src_buf = res.first;
     auto bytes_read = res.second;
@@ -159,15 +161,18 @@ int main() {
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
-    ITCHv1::ItchParser parser_v1;
-    CounterHandler h1;
-    run_one("ITCH v1", parser_v1, h1, src, len);
+    //ITCHv1::ItchParser parser_v1;
+    //CounterHandler h1;
+    //run_one("ITCH v1", parser_v1, h1, src, len);
 
-    pid_t perf_pid = run_perf();
+    //pid_t perf_pid = run_perf();
+    //sleep(1);
 
-    ITCHv2::ItchParser parser_v2;
+    __itt_resume();
+
+    ITCHv1::ItchParser parser_v1_2;
     OrderBookHandlerSingle obHandler;
-    parser_v2.parse_specific(src, len, obHandler);
+    parser_v1_2.parse_specific(src, len, obHandler);
     export_latency_distribution_csv(obHandler.latency_distribution);
 
     return 0;

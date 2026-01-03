@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -DNDEBUG -falign-loops=16 -g")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -g -fno-omit-frame-pointer -fno-optimize-sibling-calls")
 
 find_package(benchmark REQUIRED)
 find_package(absl REQUIRED)
@@ -48,5 +48,10 @@ target_link_libraries(parser_bench PRIVATE itch_parser benchmark::benchmark)
 add_executable(test
     src/main.cpp
 )
-target_compile_options(test PRIVATE -g -fno-omit-frame-pointer)
-target_link_libraries(test PRIVATE itch_parser)
+target_include_directories(test PRIVATE
+    /opt/intel/oneapi/vtune/latest/sdk/include
+)
+target_link_directories(test PRIVATE
+    /opt/intel/oneapi/vtune/latest/sdk/lib64
+)
+target_link_libraries(test PRIVATE itch_parser ittnotify)

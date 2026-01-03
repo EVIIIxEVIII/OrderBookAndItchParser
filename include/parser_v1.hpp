@@ -334,14 +334,6 @@ public:
     Message parse_msg(std::byte const * src);
 };
 
-inline uint64_t load_be48(const std::byte* p) {
-    // improved 48 bit be load, 3 instructions with gcc 13.3 vs 16 instructions for shift version
-    uint64_t x;
-    __builtin_memcpy(&x, p, 8);
-    x = __builtin_bswap64(x);
-    return x & 0x0000FFFFFFFFFFFFULL;
-}
-
 inline uint64_t load_be64(const std::byte* p) {
     return (uint64_t(p[0]) << 56) |
            (uint64_t(p[1]) << 48) |
@@ -351,6 +343,10 @@ inline uint64_t load_be64(const std::byte* p) {
            (uint64_t(p[5]) << 16) |
            (uint64_t(p[6]) << 8)  |
            uint64_t(p[7]);
+}
+
+inline uint64_t load_be48(const std::byte* p) {
+    return load_be64(p) >> 16;
 }
 
 inline uint32_t load_be32(const std::byte* p) {

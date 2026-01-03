@@ -27,6 +27,7 @@ def plot_latency_distribution(csv_path="../data/latency_distribution.csv"):
 
     data = sorted(zip(latencies, counts), key=lambda x: x[0])
     data = [(l, c) for l, c in data if l <= 1000]
+
     if not data:
         raise RuntimeError("No data <= 1000 ns")
 
@@ -49,7 +50,7 @@ def plot_latency_distribution(csv_path="../data/latency_distribution.csv"):
     plt.bar(bx, by)
     #plt.xscale("log")
 
-    plt.xlabel("Latency bucket (ns, log2)")
+    plt.xlabel("Latency bucket (ns)")
     plt.ylabel("Count")
     plt.title("Latency Distribution (≤ 1000 ns)")
 

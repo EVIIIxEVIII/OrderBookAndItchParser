@@ -23,17 +23,17 @@ public:
 };
 
 template<template<Side> typename Levels>
-inline Level OrderBook<Levels>::best_bid() const {
+ Level OrderBook<Levels>::best_bid() const {
     return bid_levels.best();
 }
 
 template<template<Side> typename Levels>
-inline Level OrderBook<Levels>::best_ask() const {
+ Level OrderBook<Levels>::best_ask() const {
     return ask_levels.best();
 }
 
 template<template<Side> typename Levels>
-inline void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, uint32_t price) {
+ void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, uint32_t price) {
     Order order;
     order.qty = qty;
     order.side = side;
@@ -48,7 +48,7 @@ inline void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t 
 }
 
 template<template<Side> typename Levels>
-inline void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
+void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
     Order& order = orders_map.at(order_id);
 
     UNEXPECTED(order.qty < qty, "Partial cancel order volume greater than order volume");
@@ -66,7 +66,7 @@ inline void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
 }
 
 template<template<Side> typename Levels>
-inline void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
+void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
     Order& order = orders_map.at(order_id);
 
     UNEXPECTED(order.qty < qty, "Partial execute order volume greater than order volume");
@@ -84,7 +84,7 @@ inline void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
 }
 
 template<template<Side> typename Levels>
-inline void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, uint32_t qty, uint32_t price) {
+void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, uint32_t qty, uint32_t price) {
     Order& old_order = orders_map.at(order_id);
 
     Order new_order;
@@ -105,7 +105,7 @@ inline void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_ord
 }
 
 template<template<Side> typename Levels>
-inline void OrderBook<Levels>::delete_order(uint64_t order_id) {
+void OrderBook<Levels>::delete_order(uint64_t order_id) {
     Order& order = orders_map.at(order_id);
 
     if (order.side == Side::Bid) {
