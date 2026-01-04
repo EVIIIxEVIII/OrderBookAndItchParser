@@ -4,11 +4,9 @@
 #include <iostream>
 #include <ittnotify.h>
 #include <vector>
-#include <x86intrin.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <papi.h>
 #include <unistd.h>
 
 #include "parser_v1.hpp"

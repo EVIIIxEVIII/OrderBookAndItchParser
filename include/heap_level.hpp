@@ -1,6 +1,6 @@
 #pragma once
 #include <queue>
-#include <unordered_map>
+#include <absl/container/flat_hash_map.h>
 #include "order_book_shared.hpp"
 
 namespace OB {
@@ -8,6 +8,10 @@ namespace OB {
 template<Side S>
 class HeapLevels {
 public:
+    HeapLevels() {
+        qty_by_price.reserve(3000);
+    }
+
     void add(Level level);
     void remove(Level level);
     Level best();
@@ -24,7 +28,7 @@ private:
     };
 
     std::priority_queue<uint32_t, std::vector<uint32_t>, PriceCmp> heap;
-    std::unordered_map<uint32_t, uint64_t> qty_by_price;
+    absl::flat_hash_map<uint32_t, uint64_t> qty_by_price;
 };
 
 template<Side S>
