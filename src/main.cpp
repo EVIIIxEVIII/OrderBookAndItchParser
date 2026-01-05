@@ -146,15 +146,15 @@ uint64_t calibrate_tsc() {
 }
 
 void export_latency_distribution_csv(
-    const absl::flat_hash_map<uint64_t, uint64_t>& latency_distribution
+    OrderBookHandlerSingle& ob
 ) {
     uint64_t rdtscp_freq = calibrate_tsc();
     std::cout << "rdtscp frequence: " << rdtscp_freq << '\n';
 
     std::vector<std::pair<uint64_t, uint64_t>> data;
-    data.reserve(latency_distribution.size());
+    data.reserve(ob.latency_distribution.size());
 
-    for (const auto& kv : latency_distribution) {
+    for (const auto& kv : ob.latency_distribution) {
         data.emplace_back(kv.first, kv.second);
     }
 
@@ -171,12 +171,18 @@ void export_latency_distribution_csv(
         std::abort();
     }
 
+    double total_sec = 0;
     out << "latency_ns,count\n";
     for (const auto& [cycles, count] : data) {
         __int128 tmp = (__int128)cycles * 1'000'000'000;
         uint64_t ns = cycles * 1e9 / rdtscp_freq;
+        double sec = double(cycles) / double(rdtscp_freq);
+        total_sec += sec * count;
         out << ns << "," << count << "\n";
     }
+
+    std::cout << "Total seconds spent: " << total_sec << '\n';
+    std::cout << "Throughput: " << ob.total_messages / total_sec << '\n';
 }
 
 void export_prices_csv(
@@ -205,24 +211,19 @@ int main() {
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
-    //ITCHv1::ItchParser parser_v1;
-    //CounterHandler h1;
-    //run_one("ITCH v1", parser_v1, h1, src, len);
-
     __itt_resume();
 
-    //pid_t perf_pid = run_perf_stat();
+    pid_t perf_pid = run_perf_stat();
 
-    //sleep(3);
-
+    sleep(3);
 
     ITCHv1::ItchParser parser_v1_2;
     OrderBookHandlerSingle obHandler;
     parser_v1_2.parse_specific(src, len, obHandler);
 
-    //kill(perf_pid, SIGINT);
+    kill(perf_pid, SIGINT);
 
-    export_latency_distribution_csv(obHandler.latency_distribution);
+    export_latency_distribution_csv(obHandler);
     export_prices_csv(obHandler.prices);
 
     return 0;

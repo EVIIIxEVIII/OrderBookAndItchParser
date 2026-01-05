@@ -6,6 +6,7 @@
 #include <x86intrin.h>
 #include "array_level.hpp"
 #include "heap_level.hpp"
+#include "hybrid_vector_map.hpp"
 #include "parser_v1.hpp"
 #include "vector_level.hpp"
 #include "vector_level_split_array.hpp"
@@ -47,7 +48,7 @@ struct OrderBookHandlerSingle {
     bool touched = false;
     absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
 
-
+    uint64_t total_messages = 0;
     unsigned aux_start, aux_end;
 
     uint64_t t0;
@@ -75,7 +76,7 @@ inline void OrderBookHandlerSingle::handle_after() {
         last_price = best_bid;
     }
 
-    if (touched) {
+    if (touched && aux_end == aux_start) {
         latency_distribution[cycles]++;
     }
 }
@@ -83,6 +84,7 @@ inline void OrderBookHandlerSingle::handle_after() {
 inline void OrderBookHandlerSingle::handle_stock_directory(const ITCHv1::StockDirectory& msg) {
     if (std::string_view(msg.stock, 8) == "NVDA    ") {
         target_stock_locate = msg.stock_locate;
+        total_messages++;
     }
 }
 
@@ -90,6 +92,7 @@ inline void OrderBookHandlerSingle::handle_add_order_no_mpid(const ITCHv1::AddOr
     if (msg.stock_locate == target_stock_locate) {
         order_book.add_order(msg.order_reference_number, static_cast<OB::Side>(msg.buy_sell), msg.shares, msg.price);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -97,6 +100,7 @@ inline void OrderBookHandlerSingle::handle_add_order_mpid(const ITCHv1::AddOrder
     if (msg.stock_locate == target_stock_locate) {
         order_book.add_order(msg.order_reference_number, static_cast<OB::Side>(msg.buy_sell), msg.shares, msg.price);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -104,6 +108,7 @@ inline void OrderBookHandlerSingle::handle_order_executed(const ITCHv1::OrderExe
     if (msg.stock_locate == target_stock_locate) {
         order_book.execute_order(msg.order_reference_number, msg.executed_shares);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -111,6 +116,7 @@ inline void OrderBookHandlerSingle::handle_order_executed_price(const ITCHv1::Or
     if (msg.stock_locate == target_stock_locate) {
         order_book.execute_order(msg.order_reference_number, msg.executed_shares);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -118,6 +124,7 @@ inline void OrderBookHandlerSingle::handle_order_cancel(const ITCHv1::OrderCance
     if (msg.stock_locate == target_stock_locate) {
         order_book.cancel_order(msg.order_reference_number, msg.cancelled_shares);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -125,6 +132,7 @@ inline void OrderBookHandlerSingle::handle_order_delete(const ITCHv1::OrderDelet
     if (msg.stock_locate == target_stock_locate) {
         order_book.delete_order(msg.order_reference_number);
         touched = true;
+        total_messages++;
     }
 }
 
@@ -132,5 +140,6 @@ inline void OrderBookHandlerSingle::handle_order_replace(const ITCHv1::OrderRepl
     if (msg.stock_locate == target_stock_locate) {
         order_book.replace_order(msg.order_reference_number, msg.new_reference_number, msg.shares, msg.price);
         touched = true;
+        total_messages++;
     }
 }

@@ -363,10 +363,6 @@ inline uint64_t load_be64(const std::byte* p) {
            uint64_t(p[7]);
 }
 
-inline uint64_t load_be48(const std::byte* p) {
-    return load_be64(p) >> 16;
-}
-
 inline uint32_t load_be32(const std::byte* p) {
     return (uint32_t(p[0]) << 24) |
            (uint32_t(p[1]) << 16) |
@@ -376,6 +372,12 @@ inline uint32_t load_be32(const std::byte* p) {
 
 inline uint16_t load_be16(const std::byte* p) {
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
+}
+
+inline uint64_t load_be48(const std::byte* p) {
+    uint32_t hi = load_be32(p);
+    uint16_t lo = load_be16(p);
+    return (uint64_t(hi) << 16) | lo;
 }
 
 template<typename SpecificHandler>
@@ -942,11 +944,10 @@ consteval std::array<ParseFn<SpecificHandler>, 256> make_high_prio_dispatch() {
 
 
 template<typename SpecificHandler>
-inline constexpr auto dispatch = make_dispatch<SpecificHandler>();
+alignas(64) inline constexpr auto dispatch = make_dispatch<SpecificHandler>();
 
 template<typename SpecificHandler>
-inline constexpr auto high_prio_dispatch = make_high_prio_dispatch<SpecificHandler>();
-
+alignas(64) inline constexpr auto high_prio_dispatch = make_high_prio_dispatch<SpecificHandler>();
 
 template<typename SpecificHandler>
 void ItchParser::parse_specific(std::byte const * src, size_t len, SpecificHandler& handler) {

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <absl/container/flat_hash_map.h>
+#include <ankerl/unordered_dense.h>
 #include "order_book_shared.hpp"
 
 namespace OB {
@@ -17,7 +18,9 @@ public:
     Level best_bid();
     Level best_ask();
 
+    uint64_t max_orders = 0;
     absl::flat_hash_map<uint64_t, Order> orders_map;
+    //ankerl::unordered_dense::map<uint64_t, Order> orders_map;
     Levels<Side::Bid> bid_levels;
     Levels<Side::Ask> ask_levels;
 };
@@ -33,7 +36,7 @@ template<template<Side> typename Levels>
 }
 
 template<template<Side> typename Levels>
- void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, uint32_t price) {
+void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, uint32_t price) {
     Order order;
     order.qty = qty;
     order.side = side;
