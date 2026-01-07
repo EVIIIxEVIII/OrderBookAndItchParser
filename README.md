@@ -3,6 +3,16 @@ This is an ITCH parser which updates a custom order book implementations. Latenc
 The spikes every 3ns are caused by the use or rdtspc instruction to measure latency, which on my laptop yields
 to around 0.3 cycle per ns.
 
+# How to use? 
+### The ITCH 5.0 parser
+The itch parser is a fully independet C++20 header file, which can be dragged and dropped into an existent project as it is.
+
+The file can be found at ```include/itch_parser.hpp```.
+
+An example of a Handler class can be found at ```include/example_benchmark_parsing.hpp```.
+
+The usage of both the parser and the handler can be found in ```src/main.cpp```.
+
 # Results
 
 ### ITCH parsing + Order Book Updates Latency Distribution 
