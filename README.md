@@ -31,7 +31,7 @@ make
 ./benchmark [path to the ITCH file] [results directory]
 ```
 
-# How to analyze
+# How to analyze?
 To analyze the latency you have to go to run the `analysis/plot_latency_distribution.py` and `analysis/plot_prices.py` files like this:
 ```
 python plot_latency_distribution.py [input directory] [output directory]
