@@ -4,12 +4,24 @@
 #include <stdint.h>
 #include <array>
 #include <cstring>
-#include <string>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <tuple>
 
 namespace ITCH {
+
+#if defined(__GNUC__) || defined(__clang__)
+#define ITCH_HOT [[gnu::hot]]
+#else
+#define ITCH_HOT
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define ITCH_COLD [[gnu::cold,gnu::noinline]]
+#else
+#define ITCH_COLD
+#endif
 
 constexpr std::array<uint8_t, 22> message_type_chars = {
     'S','R','H','Y','L','V','W','K','J','h',
@@ -134,7 +146,7 @@ requires (!std::is_array_v<member_type_t<Member>>)
 }
 
 template<typename Layout, typename Msg, size_t... I>
-__attribute__((hot))
+ITCH_HOT
 inline void parse_impl(
     Msg& m,
     const std::byte* src,
@@ -151,7 +163,7 @@ inline void parse_impl(
 }
 
 template<typename Layout, typename Msg>
-__attribute__((hot))
+ITCH_HOT
 inline Msg parse_itch(const std::byte* src) {
     Msg m;
     parse_impl<Layout, Msg>(
@@ -219,6 +231,7 @@ enum class MessageType {
     X('B', BrokenTrade) \
     X('I', Noii) \
     X('O', DirectListingCapitalRaise)
+
 
 struct SystemEvent {
     uint16_t stock_locate;
@@ -694,10 +707,6 @@ inline uint16_t load_be16(const std::byte* p) {
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
 }
 
-[[gnu::noinline]] static void bad_type(char t) {
-    throw std::runtime_error("Unknown message type: " + std::to_string(t));
-}
-
 template<typename SpecificHandler>
 using ParseFn = void(*)(std::byte const *, SpecificHandler&);
 
@@ -705,7 +714,7 @@ template<typename SpecificHandler>
 inline void ignore_message(std::byte const * src, SpecificHandler& dst) {};
 
 template<typename SpecificHandler>
-[[gnu::noinline, gnu::cold]] static void bad_type(std::byte const * _, SpecificHandler& __) {
+ITCH_COLD static void bad_type(std::byte const * _, SpecificHandler& __) {
     throw std::runtime_error("Unknown message type");
 }
 
@@ -760,7 +769,6 @@ void ItchParser::parse(std::byte const * src, size_t len, SpecificHandler& handl
         src += 2;
 
         auto raw_type = char(src[0]);
-        MessageType type = static_cast<MessageType>(raw_type);
         src += 1;
 
         handler.handle_before();
@@ -770,5 +778,9 @@ void ItchParser::parse(std::byte const * src, size_t len, SpecificHandler& handl
         src += size - 1;
     }
 }
+
+#undef ITCH_MESSAGE_LIST
+#undef ITCH_COLD
+#undef ITCH_HOT
 
 }
