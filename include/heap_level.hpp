@@ -43,9 +43,9 @@ inline void HeapLevels<S>::remove(Level level) {
     UNEXPECTED(level.qty > it->second, "Remove underflow");
 
     it->second -= level.qty;
-    //if (it->second == 0) {
-    //    qty_by_price.erase(it);
-    //}
+    if (it->second == 0) {
+        qty_by_price.erase(it);
+    }
 }
 
 template<Side S>
@@ -59,7 +59,6 @@ inline Level HeapLevels<S>::best() {
         heap.pop();
     }
 
-    //UNEXPECTED(true, "Best called on empty book");
     return {0, 0};
 }
 

@@ -12,7 +12,7 @@ def weighted_percentile(latencies, counts, percentile):
             return latency
     return latencies[-1]
 
-def plot_latency_distribution(csv_path="../data/latency_distribution.csv"):
+def plot_latency_distribution(csv_path):
     latencies = []
     counts = []
 
@@ -87,5 +87,6 @@ def plot_latency_distribution(csv_path="../data/latency_distribution.csv"):
 
 
 if __name__ == "__main__":
-    plot_latency_distribution()
+    plot_latency_distribution("../data/parsing_and_order_book_latency_distribution.csv")
+    plot_latency_distribution("../data/parsing_lantecy_distribution.csv")
 

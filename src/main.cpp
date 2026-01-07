@@ -11,25 +11,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "parser_v1.hpp"
+#include "parser_v2.hpp"
+#include "example_benchmark.hpp"
+#include "example_benchmark_parsing.hpp"
 #include "array_level.hpp"
-#include "order_book_handler_single.hpp"
-#include "hash_map.hpp"
-
-struct CounterHandler {
-    void handle(const ITCHv1::Message& msg) {
-        messages_num++;
-        counts[static_cast<unsigned char>(msg.type)]++;
-    }
-
-    void reset() {
-        messages_num = 0;
-        counts.fill(0);
-    }
-
-    std::array<uint64_t, 256> counts{};
-    uint64_t messages_num = 0;
-};
 
 template<typename Handler>
 static void dump_counts(const Handler& handler) {
@@ -39,8 +24,8 @@ static void dump_counts(const Handler& handler) {
     }
 }
 
-std::pair<std::vector<std::byte>, size_t> init_benchmark() {
-    std::ifstream file("../data/01302019.NASDAQ_ITCH50", std::ios::binary);
+std::pair<std::vector<std::byte>, size_t> init_benchmark(std::string filename) {
+    std::ifstream file(filename, std::ios::binary);
     if (!file) {
         std::cerr << "Failed to open file\n";
         return {};
@@ -143,8 +128,10 @@ uint64_t calibrate_tsc() {
     return (tmp + delta_ns / 2) / delta_ns;
 }
 
+template<typename T>
 void export_latency_distribution_csv(
-    OrderBookHandlerSingle& ob
+    T& ob,
+    std::string file_name
 ) {
     uint64_t rdtscp_freq = calibrate_tsc();
     std::cout << "rdtscp frequence: " << rdtscp_freq << '\n';
@@ -164,7 +151,7 @@ void export_latency_distribution_csv(
         }
     );
 
-    std::ofstream out("../data/latency_distribution.csv");
+    std::ofstream out("../data/" + file_name);
     if (!out) {
         std::abort();
     }
@@ -199,30 +186,36 @@ void export_prices_csv(
     }
 }
 
-int main() {
-    __itt_pause();
-    auto res = init_benchmark();
+int main(int argc, char** argv) {
+    std::string filepath;
+
+    if (argc == 1) {
+        std::cout << "Please specify the file to parse" << '\n';
+        return 1;
+    }
+
+    filepath = argv[1];
+
+    auto res = init_benchmark(filepath);
     auto src_buf = res.first;
     auto bytes_read = res.second;
 
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
-    __itt_resume();
+    ITCH::ItchParser parser;
+    {
+        BenchmarkOrderBook ob_bm_handler;
+        parser.parse(src, len, ob_bm_handler);
+        export_latency_distribution_csv(ob_bm_handler, "parsing_and_order_book_latency_distribution.csv");
+        export_prices_csv(ob_bm_handler.prices);
+    }
 
-    ITCHv1::ItchParser parser_v1_2;
-    OrderBookHandlerSingle obHandler;
-
-    pid_t perf_pid = run_perf_stat();
-    sleep(3);
-
-    parser_v1_2.parse_specific(src, len, obHandler);
-
-    kill(perf_pid, SIGINT);
-    __itt_pause();
-
-    export_latency_distribution_csv(obHandler);
-    export_prices_csv(obHandler.prices);
+    {
+        BenchmarkParsing parsing_bm_handler;
+        parser.parse(src, len, parsing_bm_handler);
+        export_latency_distribution_csv(parsing_bm_handler, "parsing_lantecy_distribution.csv");
+    }
 
     return 0;
 }

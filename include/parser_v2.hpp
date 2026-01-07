@@ -2,13 +2,20 @@
 
 #include <cstddef>
 #include <stdint.h>
+#include <array>
 #include <cstring>
 #include <string>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
-namespace ITCHv2 {
+namespace ITCH {
+
+constexpr std::array<uint8_t, 22> message_type_chars = {
+    'S','R','H','Y','L','V','W','K','J','h',
+    'A','F','E','C','X','D','U',
+    'P','Q','B','I','O'
+};
 
 struct be48{};
 
@@ -91,10 +98,9 @@ inline uint64_t load_be<uint64_t>(const std::byte* p) {
 }
 
 inline uint64_t load_be(const std::byte* p, be48 encoding) {
-    uint64_t x;
-    __builtin_memcpy(&x, p, 8);
-    x = __builtin_bswap64(x);
-    return x & 0x0000FFFFFFFFFFFFULL;
+    uint32_t hi = load_be<uint32_t>(p);
+    uint16_t lo = load_be<uint16_t>(p);
+    return (uint64_t(hi) << 16) | lo;
 }
 
 template<typename Msg, auto Member>
@@ -156,6 +162,11 @@ inline Msg parse_itch(const std::byte* src) {
     return m;
 }
 
+template<typename SpecificHandler, typename Layout, typename Msg>
+inline void parse_and_handle(const std::byte* src, SpecificHandler& handler) {
+    handler.handle(parse_itch<Layout, Msg>(src));
+}
+
 enum class MessageType {
     SYSTEM_EVENT                = 'S',
     STOCK_DIRECTORY             = 'R',
@@ -182,33 +193,32 @@ enum class MessageType {
     BROKEN_TRADE_MSG    = 'B',
 
     NOII_MSG = 'I',
-
     DIRECT_LISTING_CAPITAL_RAISE = 'O',
 };
 
 #define ITCH_MESSAGE_LIST(X) \
-    X(SYSTEM_EVENT,                 SystemEvent,                 system_event,                  unlikely) \
-    X(STOCK_DIRECTORY,              StockDirectory,              stock_directory,               unlikely) \
-    X(STOCK_TRADING_ACTION,         TradingAction,               trading_action,                unlikely) \
-    X(REG_SHO,                      RegSho,                      reg_sho,                       unlikely) \
-    X(MARKET_PARTICIPANT_POSITION,  MarketParticipantPos,        market_participant_pos,        unlikely) \
-    X(MWCB_DECLINE_LEVEL_MESSAGE,   MwcbDeclineLevel,            mwcb_decline_level,            unlikely) \
-    X(MWCB_STATUS_MESSAGE,          MwcbStatus,                  mwcb_status,                   unlikely) \
-    X(IPO_QUOTING_PERIOD_UPD,       IpoQuotationPeriodUpd,       ipo_quotation_period_upd,      unlikely) \
-    X(LULD_AUCTION_COLLAR,          LuldAuctionCollar,           luld_auction_collar,           unlikely) \
-    X(OPERATIONAL_HALT,             OperationalHalt,             operational_halt,              unlikely) \
-    X(ADD_ORDER_NO_MPID,            AddOrderNoMpid,              add_order_no_mpid,             likely) \
-    X(ADD_ORDER_MPID,               AddOrderMpid,                add_order_mpid,                likely) \
-    X(ORDER_EXECUTED,               OrderExecuted,               order_executed,                likely) \
-    X(ORDER_EXECUTED_PRICE,         OrderExecutedPrice,          order_executed_price,          likely) \
-    X(ORDER_CANCEL,                 OrderCancel,                 order_cancel,                  likely) \
-    X(ORDER_DELETE,                 OrderDelete,                 order_delete,                  likely) \
-    X(ORDER_REPLACE,                OrderReplace,                order_replace,                 likely) \
-    X(NON_CROSS_TRADE_MSG,          TradeMessageNonCross,        trade_msg_non_cross,           unlikely) \
-    X(CROSS_TRADE_MSG,              TradeMessageCross,           trade_msg_cross,               unlikely) \
-    X(BROKEN_TRADE_MSG,             BrokenTrade,                 broken_trade,                  unlikely) \
-    X(NOII_MSG,                     Noii,                        noii,                          unlikely) \
-    X(DIRECT_LISTING_CAPITAL_RAISE, DirectListingCapitalRaise,   direct_listing_capital_raise,  unlikely)
+    X('A', AddOrderNoMpid) \
+    X('X', OrderCancel) \
+    X('D', OrderDelete) \
+    X('U', OrderReplace) \
+    X('S', SystemEvent) \
+    X('R', StockDirectory) \
+    X('H', TradingAction) \
+    X('Y', RegSho) \
+    X('L', MarketParticipantPos) \
+    X('V', MwcbDeclineLevel) \
+    X('W', MwcbStatus) \
+    X('K', IpoQuotationPeriodUpd) \
+    X('J', LuldAuctionCollar) \
+    X('h', OperationalHalt) \
+    X('F', AddOrderMpid) \
+    X('E', OrderExecuted) \
+    X('C', OrderExecutedPrice) \
+    X('P', TradeMessageNonCross) \
+    X('Q', TradeMessageCross) \
+    X('B', BrokenTrade) \
+    X('I', Noii) \
+    X('O', DirectListingCapitalRaise)
 
 struct SystemEvent {
     uint16_t stock_locate;
@@ -674,44 +684,10 @@ using DirectListingCapitalRaiseLayout = std::tuple<
     Field<&DirectListingCapitalRaise::upper_price_range_collar>
 >;
 
-struct Message {
-    MessageType type;
-    size_t      size;
-    union {
-        SystemEvent system_event;
-        StockDirectory stock_directory;
-        TradingAction trading_action;
-        RegSho reg_sho;
-        MarketParticipantPos market_participant_pos;
-        MwcbDeclineLevel mwcb_decline_level;
-        MwcbStatus mwcb_status;
-        IpoQuotationPeriodUpd ipo_quotation_period_upd;
-        LuldAuctionCollar luld_auction_collar;
-        OperationalHalt operational_halt;
-        AddOrderNoMpid add_order_no_mpid;
-        AddOrderMpid add_order_mpid;
-        OrderExecuted order_executed;
-        OrderExecutedPrice order_executed_price;
-        OrderCancel order_cancel;
-        OrderDelete order_delete;
-        OrderReplace order_replace;
-        TradeMessageNonCross trade_msg_non_cross;
-        TradeMessageCross trade_msg_cross;
-        BrokenTrade broken_trade;
-        Noii noii;
-        DirectListingCapitalRaise direct_listing_capital_raise;
-    };
-};
-
 class ItchParser {
 public:
-    template <typename Handler>
-    void parse(std::byte const *  src, size_t len, Handler& handler);
-
     template <typename SpecificHandler>
-    void parse_specific(std::byte const * src, size_t len, SpecificHandler& handler);
-
-    Message parse_msg(std::byte const * src);
+    void parse(std::byte const *  src, size_t len, SpecificHandler& handler);
 };
 
 inline uint16_t load_be16(const std::byte* p) {
@@ -722,40 +698,58 @@ inline uint16_t load_be16(const std::byte* p) {
     throw std::runtime_error("Unknown message type: " + std::to_string(t));
 }
 
-inline Message ItchParser::parse_msg(std::byte const * src) {
-    uint16_t size = load_be16(src);
-    src += 2;
+template<typename SpecificHandler>
+using ParseFn = void(*)(std::byte const *, SpecificHandler&);
 
-    auto raw_type = char(src[0]);
-    MessageType type = static_cast<MessageType>(raw_type);
-    src += 1;
+template<typename SpecificHandler>
+inline void ignore_message(std::byte const * src, SpecificHandler& dst) {};
 
-    Message msg{};
-    msg.type = type;
-    msg.size = size;
+template<typename SpecificHandler>
+[[gnu::noinline, gnu::cold]] static void bad_type(std::byte const * _, SpecificHandler& __) {
+    throw std::runtime_error("Unknown message type");
+}
 
-    switch (type) {
-    #define X(NAME, TYPE, FIELD, LIKELINESS) \
-        case MessageType::NAME: \
-        [[LIKELINESS]] \
-        { \
-            msg.FIELD = parse_itch<TYPE##Layout, TYPE>(src); \
-            asm volatile("" : : "r,m"(msg.FIELD)); \
-            return msg; \
+consteval bool is_valid_message_type(uint8_t c) {
+    for (uint8_t v : message_type_chars) {
+        if (v == c) return true;
+    }
+    return false;
+}
+
+template<typename SpecificHandler, typename Msg>
+concept HasHandle =
+    requires(SpecificHandler& h, const Msg& m) {
+        h.handle(m);
+    };
+
+template<typename SpecificHandler>
+consteval std::array<ParseFn<SpecificHandler>, 256> make_dispatch() {
+    std::array<ParseFn<SpecificHandler>, 256> table{};
+
+    for (int i = 0; i < table.size(); ++i)  {
+        if (is_valid_message_type(i)) {
+            table[i] = &ignore_message<SpecificHandler>;
+        } else {
+            table[i] = &bad_type<SpecificHandler>;
+        }
+    }
+
+    #define X(RAW_TYPE, TYPE) \
+        if constexpr (HasHandle<SpecificHandler, TYPE>) { \
+            table[static_cast<uint8_t>(RAW_TYPE)] = &parse_and_handle<SpecificHandler, TYPE##Layout, TYPE>; \
         } \
 
         ITCH_MESSAGE_LIST(X)
-
-        default:
-            bad_type(raw_type);
     #undef X
-    }
 
-    return msg;
+    return table;
 }
 
 template<typename SpecificHandler>
-void ItchParser::parse_specific(std::byte const * src, size_t len, SpecificHandler& handler) {
+alignas(64) inline constexpr auto dispatch = make_dispatch<SpecificHandler>();
+
+template<typename SpecificHandler>
+void ItchParser::parse(std::byte const * src, size_t len, SpecificHandler& handler) {
     std::byte const * end = src + len;
 
     while (end - src >= 3) {
@@ -769,43 +763,12 @@ void ItchParser::parse_specific(std::byte const * src, size_t len, SpecificHandl
         MessageType type = static_cast<MessageType>(raw_type);
         src += 1;
 
-        switch (type) {
-        #define X(NAME, TYPE, FIELD, LIKELINESS) \
-            case MessageType::NAME: \
-            [[LIKELINESS]] \
-            { \
-                handler.handle_before(); \
-                auto m = parse_itch<TYPE##Layout, TYPE>(src); \
-                handler.handle_##FIELD(m); \
-                handler.handle_after(); \
-                break; \
-            } \
-
-            ITCH_MESSAGE_LIST(X)
-
-            default:
-                bad_type(raw_type);
-        #undef X
-        }
+        handler.handle_before();
+        dispatch<SpecificHandler>[raw_type](src, handler);
+        handler.handle_after();
 
         src += size - 1;
     }
 }
 
-template <typename Handler>
-void ItchParser::parse(std::byte const *  src, size_t len, Handler& handler) {
-    std::byte const * end = src + len;
-
-    while (end - src >= 3) {
-        uint16_t size = load_be16(src);
-        if (end - src < 2 + size) {
-            break;
-        }
-
-        Message msg = parse_msg(src);
-        handler.handle(msg);
-
-        src += msg.size + 2;
-    }
-}
 }

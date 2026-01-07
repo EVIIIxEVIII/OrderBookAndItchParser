@@ -966,7 +966,6 @@ void ItchParser::parse_specific(std::byte const * src, size_t len, SpecificHandl
 
         handler.handle_before();
 
-        //high_prio_dispatch<SpecificHandler>[raw_type](src, handler);
         dispatch<SpecificHandler>[raw_type](src, handler);
 
         handler.handle_after();

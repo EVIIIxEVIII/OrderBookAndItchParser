@@ -60,7 +60,7 @@ struct OrderBookHandlerSingle {
 
 
     OrderBookHandlerSingle() {
-        prices.reserve(20'000);
+        prices.reserve(60'000);
     }
 };
 

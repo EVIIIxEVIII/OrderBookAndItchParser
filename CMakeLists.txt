@@ -15,17 +15,6 @@ find_package(unordered_dense CONFIG REQUIRED)
 add_library(itch_parser INTERFACE)
 target_include_directories(itch_parser INTERFACE include)
 target_link_libraries(itch_parser INTERFACE absl::flat_hash_map)
-target_link_libraries(itch_parser INTERFACE unordered_dense::unordered_dense)
-
-add_executable(parser_bench
-    benchmark/main.cpp
-    src/utils.cpp
-    benchmark/bm_parser_v1.cpp
-    benchmark/bm_parser_v2.cpp
-)
-
-target_compile_options(parser_bench PRIVATE)
-target_link_libraries(parser_bench PRIVATE itch_parser benchmark::benchmark)
 
 add_executable(test
     src/main.cpp
