@@ -15,7 +15,7 @@ The usage of both the parser and the handler can be found in ```src/main.cpp```.
 
 # Results
 
-The results were obtained on a pinned p-core of an i7-12700h CPU with turbo boost on (4.653Ghz) and Hyper Threading on. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS on an unmodified Linux 6.14.0-37-generic kernel.
+The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset -c 1` with turbo boost on (4.653Ghz peak) with Hyper Threading on and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the `rdtscp` instruction and then converted into ns by estimating its frequence. 
 
 ### ITCH parsing + Order Book Updates Latency Distribution 
 <img width="3000" height="1800" alt="parsing_and_order_book_latency_distribution" src="https://github.com/user-attachments/assets/7bd09120-943f-49e3-a60a-75e337617a59" />
