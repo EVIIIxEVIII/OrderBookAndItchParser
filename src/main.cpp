@@ -10,8 +10,8 @@
 #include <unistd.h>
 
 #include "itch_parser.hpp"
-#include "example_benchmark.hpp"
-#include "example_benchmark_parsing.hpp"
+#include "benchmarks/example_benchmark.hpp"
+#include "benchmarks/example_benchmark_parsing.hpp"
 
 std::pair<std::vector<std::byte>, size_t> init_benchmark(std::string filename) {
     std::ifstream file(filename, std::ios::binary);
@@ -199,6 +199,5 @@ int main(int argc, char** argv) {
     }
 
     //kill(pid, SIGINT);
-
     return 0;
 }

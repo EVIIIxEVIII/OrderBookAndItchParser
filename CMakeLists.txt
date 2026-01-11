@@ -9,10 +9,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O3 -march=nati
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 
 find_package(absl REQUIRED)
+find_package(benchmark REQUIRED)
 
 add_library(itch_parser INTERFACE)
 target_include_directories(itch_parser INTERFACE include)
 target_link_libraries(itch_parser INTERFACE absl::flat_hash_map)
+target_link_libraries(itch_parser INTERFACE benchmark::benchmark pthread)
 
 add_executable(benchmark src/main.cpp)
 target_link_libraries(benchmark PRIVATE itch_parser)
