@@ -5,6 +5,7 @@
 #include <emmintrin.h>
 #include <benchmark/benchmark.h>
 #include <x86intrin.h>
+#include <iostream>
 #include "itch_parser.hpp"
 
 template<typename T>
@@ -68,7 +69,10 @@ inline void BenchmarkParsing::handle_after() {
 }
 
 #define DEF_HANDLER(T) \
-inline void BenchmarkParsing::handle(T msg) { consume(msg); }
+inline void BenchmarkParsing::handle(T msg) { \
+    consume(msg); \
+    std::cout << msg.timestamp << '\n'; \
+}
 
 DEF_HANDLER(ITCH::AddOrderNoMpid)
 DEF_HANDLER(ITCH::OrderCancel)

@@ -1,9 +1,9 @@
-#include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <vector>
 #include <iostream>
 #include <time.h>
+#include <rte_eal.h>
+#include <rte_ethdev.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -12,7 +12,7 @@
 #include <random>
 
 #include "itch_parser.hpp"
-#include "benchmarks/example_benchmark.hpp"
+#include "benchmarks/benchmark_utils.hpp"
 #include "benchmarks/example_benchmark_parsing.hpp"
 
 std::atomic<bool> run_noise = true;
@@ -40,163 +40,70 @@ void allocator_noise() {
     }
 }
 
-std::pair<std::vector<std::byte>, size_t> init_benchmark(std::string filename) {
-    std::ifstream file(filename, std::ios::binary);
-    if (!file) {
-        std::cerr << "Failed to open file\n";
-        return {};
-    }
-
-    std::vector<std::byte> src_buf;
-    src_buf.resize(3LL * 1024 * 1024 * 1024);
-
-    file.read(reinterpret_cast<char*>(src_buf.data()), src_buf.size());
-    size_t bytes_read = size_t(file.gcount());
-
-    if (bytes_read < 3) {
-        std::cerr << "File read too small\n";
-        return {};
-    }
-
-    return {src_buf, bytes_read};
-}
-
-pid_t run_perf_report() {
-    pid_t pid = fork();
-    if (pid == 0) {
-        char pidbuf[32];
-        snprintf(pidbuf, sizeof(pidbuf), "%d", getppid());
-
-        execlp(
-            "perf",
-            "perf",
-            "record",
-            "-F",
-            "999",
-            "-g",
-            "-p", pidbuf,
-            nullptr
-        );
-
-        _exit(127);
-    }
-
-    return pid;
-}
-
-pid_t run_perf_stat() {
-    pid_t pid = fork();
-    if (pid == 0) {
-        char pidbuf[32];
-        snprintf(pidbuf, sizeof(pidbuf), "%d", getppid());
-
-        execlp(
-            "perf",
-            "perf",
-            "stat",
-            "-p", pidbuf,
-            nullptr
-        );
-
-        _exit(127);
-    }
-
-    return pid;
-}
-
-uint64_t cycles_to_ns(uint64_t cycles, uint64_t freq) {
-    __int128 num = (__int128)cycles * 1'000'000'000 + (freq / 2);
-    return (uint64_t)(num / freq);
-}
-
-uint64_t calibrate_tsc() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    uint64_t t0_ns = ts.tv_sec * 1'000'000'000ull + ts.tv_nsec;
-
-    unsigned aux;
-    uint64_t c0 = __rdtscp(&aux);
-
-    timespec sleep_ts;
-    sleep_ts.tv_sec = 1;
-    sleep_ts.tv_nsec = 0;
-
-    nanosleep(&sleep_ts, nullptr);
-
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    uint64_t t1_ns = ts.tv_sec * 1'000'000'000ull + ts.tv_nsec;
-
-    uint64_t c1 = __rdtscp(&aux);
-
-    uint64_t delta_cycles = c1 - c0;
-    uint64_t delta_ns = t1_ns - t0_ns;
-
-    __int128 tmp = (__int128)delta_cycles * 1'000'000'000;
-    return (tmp + delta_ns / 2) / delta_ns;
-}
-
-template<typename T>
-void export_latency_distribution_csv(
-    T& ob,
-    std::string file_name
-) {
-    uint64_t rdtscp_freq = calibrate_tsc();
-    std::cout << "rdtscp frequence: " << rdtscp_freq << '\n';
-
-    std::vector<std::pair<uint64_t, uint64_t>> data;
-    data.reserve(ob.latency_distribution.size());
-
-    for (const auto& kv : ob.latency_distribution) {
-        data.emplace_back(kv.first, kv.second);
-    }
-
-    std::sort(
-        data.begin(),
-        data.end(),
-        [](const auto& a, const auto& b) {
-            return a.first < b.first;
-        }
-    );
-
-    std::ofstream out(file_name);
-    if (!out) {
-        std::abort();
-    }
-
-    out << "latency_ns,count\n";
-    for (const auto& [cycles, count] : data) {
-        uint64_t ns = cycles_to_ns(cycles, rdtscp_freq);
-        out << ns << "," << count << "\n";
-    }
-
-    __int128 total_cycles = 0;
-    for (const auto& [cycles, count] : data) {
-        total_cycles += (__int128)cycles * count;
-    }
-    double total_sec = (double)total_cycles / (double)rdtscp_freq;
-
-    std::cout << "Total seconds spent: " << total_sec << '\n';
-    std::cout << "Throughput: " << ob.total_messages / total_sec << '\n';
-}
-
-void export_prices_csv(
-    const std::vector<uint32_t>& prices,
-    std::string outdir
-) {
-    std::vector<uint32_t> data = prices;
-
-    std::ofstream out(outdir + "prices.csv");
-    if (!out) {
-        std::abort();
-    }
-
-    out << "price\n";
-    for (uint32_t price : data) {
-        out << price << "\n";
-    }
-}
 
 int main(int argc, char** argv) {
+    int eal_argc = rte_eal_init(argc, argv);
+    if (eal_argc < 0) {
+        throw std::runtime_error("EAL init failed");
+    }
+
+    if (rte_eth_dev_count_avail() == 0) {
+        throw std::runtime_error("Specify a vdev device");
+    }
+
+    uint16_t port_id = 0;
+    rte_mempool* pool = rte_pktmbuf_pool_create(
+        "mbuf_pool",
+        8192,
+        256,
+        0,
+        RTE_MBUF_DEFAULT_BUF_SIZE,
+        rte_socket_id()
+    );
+
+    if (!pool) {
+        throw std::runtime_error("mempool creation failed\n");
+    }
+
+    rte_eth_dev_info dev_info;
+    int status = rte_eth_dev_info_get(port_id, &dev_info);
+    if (status != 0) {
+        throw std::runtime_error("failed to get device info\n");
+    }
+
+    struct rte_eth_conf conf = {};
+    conf.txmode.offloads = dev_info.tx_offload_capa;
+    conf.rxmode.offloads = dev_info.rx_offload_capa;
+
+    if (rte_eth_dev_configure(port_id, 1, 1, &conf) < 0) {
+        throw std::runtime_error("failed to configure the device\n");
+    }
+
+    rte_eth_txconf txconf = dev_info.default_txconf;
+    txconf.offloads = conf.txmode.offloads;
+
+    rte_eth_rxconf rxconf = dev_info.default_rxconf;
+    rxconf.offloads = conf.rxmode.offloads;
+
+    if (rte_eth_tx_queue_setup(port_id, 0, 1024, rte_socket_id(), &txconf)) {
+        throw std::runtime_error("failed to configure the tx queue\n");
+    }
+
+    if (rte_eth_rx_queue_setup(port_id, 0, 1024, rte_socket_id(), &rxconf, pool)) {
+        throw std::runtime_error("failed to configure the rx queue\n");
+    }
+
+    if (rte_eth_promiscuous_enable(port_id) != 0) {
+        throw std::runtime_error("failed to enable promiscuous eth");
+    }
+
+    if (rte_eth_dev_start(port_id) < 0) {
+        throw std::runtime_error("failed to start the device\n");
+    }
+
+    argc -= eal_argc;
+    argv += eal_argc;
+
     std::string filepath;
     std::string outdir;
 
@@ -220,15 +127,15 @@ int main(int argc, char** argv) {
     #endif
 
     ITCH::ItchParser parser;
-    {
-        BenchmarkOrderBook ob_bm_handler;
-        parser.parse(src, len, ob_bm_handler);
+    //{
+    //    BenchmarkOrderBook ob_bm_handler;
+    //    parser.parse(src, len, ob_bm_handler);
 
-        #ifndef PERF
-        export_latency_distribution_csv(ob_bm_handler, outdir + "parsing_and_order_book_latency_distribution.csv");
-        export_prices_csv(ob_bm_handler.prices, outdir);
-        #endif
-    }
+    //    #ifndef PERF
+    //    export_latency_distribution_csv(ob_bm_handler, outdir + "parsing_and_order_book_latency_distribution.csv");
+    //    export_prices_csv(ob_bm_handler.prices, outdir);
+    //    #endif
+    //}
 
     {
         BenchmarkParsing parsing_bm_handler;
