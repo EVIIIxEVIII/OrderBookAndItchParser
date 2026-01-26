@@ -57,10 +57,10 @@ int main(int argc, char** argv) {
     uint16_t port_id = 0;
     rte_mempool* pool = rte_pktmbuf_pool_create(
         "mbuf_pool",
-        8191,
+        4095,
         256,
         0,
-        RTE_PKTMBUF_HEADROOM + 8192,
+        RTE_PKTMBUF_HEADROOM + 2048,
         rte_socket_id()
     );
 
@@ -130,8 +130,12 @@ int main(int argc, char** argv) {
     uint64_t hz = rte_get_timer_hz();
     size_t total_size = 0;
 
+    uint64_t pkts = 0;
+
     while (true) {
         uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 512);
+        pkts += n;
+
         for (int i = 0; i < n; ++i) {
             rte_mbuf* m = bufs[i];
             static int pkt_i = 0;
@@ -160,6 +164,7 @@ int main(int argc, char** argv) {
             p += 2;
 
             size_t itch_len = rte_be_to_cpu_16(udp->dgram_len) - sizeof(rte_udp_hdr) - 20;
+
             if (rte_be_to_cpu_16(udp->dgram_len) + sizeof(rte_ipv4_hdr) + sizeof(rte_ether_hdr) != m->pkt_len) {
                 std::cout << rte_be_to_cpu_16(udp->dgram_len) + sizeof(rte_ipv4_hdr) + sizeof(rte_ether_hdr) << ' ' << m->pkt_len << '\n';
                 throw std::runtime_error("Something went wrong, pkt length doesn't match expected length");
@@ -170,11 +175,13 @@ int main(int argc, char** argv) {
 
             total_size += itch_len;
         }
-        rte_pktmbuf_free_bulk(bufs, n);
 
+        rte_pktmbuf_free_bulk(bufs, n);
         uint64_t now = rte_get_timer_cycles();
         if (now - last_print > hz) {
             std::cout << "Received ITCH: " << total_size << '\n';
+            std::cout << "PpS: " << pkts << '\n';
+            pkts = 0;
             last_print = now;
         }
     }
