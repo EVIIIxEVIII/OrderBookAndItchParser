@@ -46,7 +46,6 @@ using member_type_t =
         decltype(Member)
     >::member_type;
 
-
 template<auto Member, typename Encoding = void>
 struct Field {
     using type = member_type_t<Member>;

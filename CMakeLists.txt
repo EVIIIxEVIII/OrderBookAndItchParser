@@ -28,7 +28,7 @@ add_executable(benchmark ${SRC_FILES})
 target_link_libraries(benchmark PRIVATE itch_parser)
 target_link_libraries(benchmark PRIVATE ${DPDK_LIBRARIES})
 target_compile_options(benchmark PRIVATE
-    $<$<CONFIG:Release>:-O3 -march=native>
+    $<$<CONFIG:Release>:-O3 -march=native -g>
     $<$<CONFIG:RelWithDebInfo>:-O3 -march=native -g>
 )
 

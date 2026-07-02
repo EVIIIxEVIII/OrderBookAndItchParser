@@ -1,9 +1,9 @@
 # General
-This is an ITCH parser which updates a custom order book implementations. Latency results as well as installation and analysis steps can be seen below.
+This is an ITCH parser which updates custom order book implementations. Latency results as well as installation and analysis steps can be seen below.
 
 # How to use?
 ### The ITCH 5.0 parser
-The itch parser is a fully independent C++20 header file, which can be dragged and dropped into an existent project as it is.
+The ITCH parser is a fully independent C++20 header file, which can be dragged and dropped into an existing project as it is.
 
 The file can be found at ```include/itch_parser.hpp``` and can be accessed in the ITCH:: namespace.
 
@@ -20,7 +20,7 @@ sudo apt install libabsl-dev
 
 The `order_book.hpp` implementation serves as an interface and all implementations for the underlying order book operations can be found in the `include/levels/` directory.
 
-# How to run the benchmakrs?
+# How to run the benchmarks?
 Install `absl` and `google-benchmark`:
 ```
 sudo apt update
@@ -40,14 +40,14 @@ If you want to get the .csv files with latency numbers and recorded best bids th
 ```
 sudo taskset -c 2 ./benchmark   --proc-type=primary --file-prefix=memif_cli   --vdev=net_memif0,socket=/tmp/memif2.sock,id=0,role=server,rsize=9  -l 2  --no-pci  [results directory]
 ```
-In order for this to work you would also need the to clone the [replay engine](https://github.com/Kirill-Katz/itch-replay-engine) which wills stream the ITCH file throught DPDK to this ingestion engine. 
+In order for this to work you would also need to clone the [replay engine](https://github.com/Kirill-Katz/itch-replay-engine), which will stream the ITCH file through DPDK to this ingestion engine. 
 After you built the replay engine you can run it like this:
 
 ```
 sudo taskset -c 3 ./run  --proc-type=primary --file-prefix=memif_srv  --vdev=net_memif0,socket=/tmp/memif2.sock,id=0,role=client,rsize=9,zero-copy=yes --single-file-segments -l 3 --no-pci  [path to ITCH file]
 ```
 
-After the replay engine has been started you should see the ingetion engine receiving packets:
+After the replay engine has been started you should see the ingestion engine receiving packets:
 
 <img width="295" height="875" alt="image" src="https://github.com/user-attachments/assets/330a25b0-aa87-4fbe-a608-57f88bca3b02" />
 
@@ -64,11 +64,11 @@ python plot_prices.py [path to prices.csv] [output png file]
 ```
 
 # Where to get the ITCH file?
-The ITCH file can be downloaded here: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/. For my tests I downloaded the 01302019.NASDAQ_ITCH50 file. Be aware that an ITCH file take around 10Gb.
+The ITCH file can be downloaded here: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/. For my tests I downloaded the 01302019.NASDAQ_ITCH50 file. Be aware that an ITCH file takes around 10GB.
 
 # Results
 
-The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset -c 1` with turbo boost on (4.653Ghz peak) with Hyper Threading off and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the `rdtscp` instruction and then converted into ns by estimating its frequence. The order book results were obtained on the first 3GB of the above mentioned file on the Nvidia stock messages using the `include/levels/vector_level_b_search.hpp` implementation. The results for the parser benchmark were obtained on all types of ITCH messages on the same first 3GB of the file.
+The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset -c 1` with turbo boost on (4.653Ghz peak) with Hyper Threading off and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the `rdtscp` instruction and then converted into ns by estimating its frequency. The order book results were obtained on the first 3GB of the above mentioned file on the Nvidia stock messages using the `include/levels/vector_level_b_search.hpp` implementation. The results for the parser benchmark were obtained on all types of ITCH messages on the same first 3GB of the file.
 
 ### ITCH parsing directly from the queue RX + Order Book Updates Latency Distribution
 <img width="3000" height="1800" alt="parsing_and_order_book_latency_distribution" src="https://github.com/user-attachments/assets/560e063b-df52-4827-9dc0-c9c604196c50" />
@@ -82,5 +82,4 @@ The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset 
 ### Best Bids for Nvidia stock for the first few trading hours on 01.30.2019
 
 <img width="1920" height="1440" alt="best_bids" src="https://github.com/user-attachments/assets/bb35094f-2f1f-49a9-bb5a-a7dd486ebfeb" />
-
 

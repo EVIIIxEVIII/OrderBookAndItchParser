@@ -46,6 +46,11 @@ static void add_strategy_consumers(
     }
 }
 
+extern "C" __attribute__((noinline, used))
+void magic_trace_stop_indicator() {
+    asm volatile("" ::: "memory");
+}
+
 int main(int argc, char** argv) {
     cpu_set_t main_cpuset;
     CPU_ZERO(&main_cpuset);
@@ -127,6 +132,10 @@ int main(int argc, char** argv) {
                 } else {
                     skipped_latencies++;
                 }
+
+                if (ns > 2'000) {
+                    magic_trace_stop_indicator();
+                }
             }
 
             std::cout << "Skipped latencies: " << skipped_latencies << '\n';
@@ -159,5 +168,6 @@ int main(int argc, char** argv) {
     for (auto& consumer_thread : consumer_threads) {
         consumer_thread.join();
     }
+
     return 0;
 }
